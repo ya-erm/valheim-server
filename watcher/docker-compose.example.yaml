@@ -1,0 +1,25 @@
+services:
+  watcher:
+    build: .
+    container_name: valheim-watcher
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VALHEIM_HOOK_PORT: "3920"
+      VALHEIM_BACKUPS_DIR: /valheim/backups
+      VALHEIM_WORLDS_DIR: /valheim/worlds
+      VALHEIM_PROJECT_DIR: ${VALHEIM_PROJECT_DIR:-/srv/valheim}
+      VALHEIM_WORLD_ENV_FILE: ${VALHEIM_PROJECT_DIR:-/srv/valheim}/active-world.env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+      - ../config/backups:/valheim/backups:ro
+      - ../config/worlds_local:/valheim/worlds
+      - ${VALHEIM_PROJECT_DIR:-/srv/valheim}/docker-compose.yaml:${VALHEIM_PROJECT_DIR:-/srv/valheim}/docker-compose.yaml:ro
+      - ${VALHEIM_PROJECT_DIR:-/srv/valheim}/valheim.env:${VALHEIM_PROJECT_DIR:-/srv/valheim}/valheim.env:ro
+      - ${VALHEIM_PROJECT_DIR:-/srv/valheim}/active-world.env:${VALHEIM_PROJECT_DIR:-/srv/valheim}/active-world.env
+      # With a local Telegram Bot API, mount its storage read-only here:
+      # - /srv/telegram-bot-api/data:/var/lib/telegram-bot-api:ro
+    ports:
+      - "127.0.0.1:3920:3920"
