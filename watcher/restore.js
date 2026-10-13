@@ -537,6 +537,6 @@ const createRestoreManager = (o) => {
     finally { installing = false; }
     return true;
   };
-  return { handleUpdate };
+  return { handleUpdate, isBusy: () => installing || [...sessions.values()].some((s) => s.busy || s.expires > Date.now()) };
 };
 module.exports = { createRestoreManager, unzipWorlds, install };

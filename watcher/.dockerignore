@@ -2,5 +2,10 @@
 !watcher.js
 !restore.js
 !world-files.js
+!release-schema.js
+!updater.js
+!update-runner.js
+!health-check.js
+!version.json
 !Dockerfile
 !.dockerignore

@@ -6,6 +6,7 @@ const http = require("http");
 const https = require("https");
 const { spawn, exec, execFile } = require("child_process");
 const { createRestoreManager } = require("./restore");
+const { createUpdater } = require("./updater");
 
 // ======== .env загрузка ========
 
@@ -303,8 +304,11 @@ const tgPost = (method, data) => {
       res.on("end", () => {
         try { resolve(JSON.parse(raw)); } catch { resolve(raw); }
       });
+      res.on("error", reject);
+      res.on("aborted", () => reject(new Error("Telegram response aborted")));
     });
     req.on("error", reject);
+    req.setTimeout(15000, () => req.destroy(new Error("Telegram request timed out")));
     req.write(body);
     req.end();
   });
@@ -328,8 +332,11 @@ const tgGet = (method, params = {}) => {
       res.on("end", () => {
         try { resolve(JSON.parse(raw)); } catch { resolve(raw); }
       });
+      res.on("error", reject);
+      res.on("aborted", () => reject(new Error("Telegram response aborted")));
     });
     req.on("error", reject);
+    req.setTimeout(45000, () => req.destroy(new Error("Telegram request timed out")));
     req.end();
   });
 };
@@ -851,6 +858,11 @@ const restoreManager = createRestoreManager({
   sendMessage,
   sendDocument,
 });
+const updater = createUpdater({
+  adminId: TG_ADMIN_ID,
+  notify: (text, chat) => sendMessage(text, undefined, chat || TG_ADMIN_ID),
+  isBusy: () => manualBackupInProgress || restoreManager.isBusy(),
+});
 
 const handleUpdate = async (update) => {
   if (!update.message) return;
@@ -863,6 +875,11 @@ const handleUpdate = async (update) => {
     : rawText;
   console.log(`[bot] Команда от ${userId} в чате ${chatId}: ${rawText}`);
 
+  if (await updater.handleUpdate(update)) return;
+  if (updater.isApplying() && (update.message.document || String(text).startsWith("/restore") || text === "/backup")) {
+    await sendMessage("⏳ Идёт обновление бота. Повторите backup/restore после завершения.", undefined, chatId);
+    return;
+  }
   if (await restoreManager.handleUpdate(update)) return;
 
   if (text === "/start") {
@@ -923,7 +940,10 @@ const handleUpdate = async (update) => {
       "/backup - бэкап активного мира без .old\n" +
       "/restore - начать восстановление мира (админ)\n" +
       "/restore_url - добавить ссылку Яндекс Диска (админ)\n" +
-      "/restore_world_N - выбрать мир из общего ZIP (админ)",
+      "/restore_world_N - выбрать мир из общего ZIP (админ)\n" +
+      "/bot_version - версия бота и автообновление\n" +
+      "/bot_update_check - проверить релиз бота (админ)\n" +
+      "/bot_update - установить свежий релиз бота (админ)",
       undefined, chatId
     );
   } else if (text) {
@@ -941,6 +961,7 @@ const setupTgWebhook = async () => {
     const res = await tgPost("setWebhook", params);
     if (res.ok) {
       console.log(`🔗 TG webhook зарегистрирован: ${TG_WEBHOOK_URL}`);
+      updater.markTelegramReady();
     } else {
       console.error("[tg-webhook] ❌ setWebhook:", JSON.stringify(res));
     }
@@ -996,6 +1017,8 @@ const startPolling = () => {
         offset: String(lastUpdateId + 1),
         timeout: "30",
       });
+      if (!res.ok) throw new Error("Telegram getUpdates failed");
+      updater.markTelegramReady();
 
       const updates = res.result || [];
       if (updates.length > 0) {
@@ -1458,3 +1481,4 @@ const startDockerLogs = (tail = 0) => {
 
 sendMessage(`🟢 Наблюдатель запущен`, new Date().toLocaleString("ru-RU"), TG_ADMIN_ID);
 tryReconnectDockerLogs();
+if (!DEBUG) updater.start();

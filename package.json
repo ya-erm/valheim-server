@@ -4,8 +4,9 @@
   "private": true,
   "description": "Valheim watcher and world backup/restore tools",
   "scripts": {
-    "check": "node --check watcher/watcher.js && node --check watcher/restore.js && node --check watcher/world-files.js && node --check scripts/check-archive.js",
-    "test": "node --test tests/*.test.js"
+    "check": "node scripts/check-syntax.js",
+    "test": "node --test tests/*.test.js",
+    "package:release": "node scripts/package-release.js"
   },
   "engines": { "node": ">=22" }
 }

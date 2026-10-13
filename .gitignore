@@ -10,6 +10,7 @@ config/
 worlds_local/
 backups/
 code-backups/
+dist/
 node_modules/
 *.db
 *.db2
@@ -18,6 +19,7 @@ node_modules/
 *.chunk
 *.chunks
 *.fch
+*.old
 *.zip
 *.log
 *.pem
