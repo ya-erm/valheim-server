@@ -1,5 +1,28 @@
 const fs = require("fs");
 const path = require("path");
+const { execFile } = require("node:child_process");
+
+const statusCommand = (args) => new Promise((resolve, reject) => {
+  execFile("docker", args, { timeout: 10000, maxBuffer: 65536 }, (error, stdout) => {
+    if (error) reject(new Error("Could not read Valheim container status"));
+    else resolve(stdout);
+  });
+});
+
+const getServerStatus = async (container, online, run = statusCommand) => {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(container)) throw new Error("Invalid container name");
+  const filter = "name=^/" + container.replace(/\./g, "\\.") + "$";
+  let status = (await run(["ps", "--filter", filter, "--format", "{{.Status}}"])).trim();
+  let world = "не подключена";
+  if (status) {
+    // Read only WORLD_NAME, never the other container environment variables.
+    const format = '{{.State.Running}}{{println}}{{range .Config.Env}}{{if eq (index (split . "=") 0) "WORLD_NAME"}}{{println .}}{{end}}{{end}}';
+    const lines = (await run(["inspect", "--format", format, container])).trim().split("\n");
+    if (lines[0] === "true") world = lines.find((line) => line.startsWith("WORLD_NAME="))?.slice(11).trim() || "неизвестна";
+    else status = "";
+  }
+  return "📊 Статус: " + (status || "Не запущен") + "\n🗺 Карта: " + world + "\n👥 Онлайн: " + online;
+};
 
 const worldName = (name) => {
   if (!name || name.length > 64 || name === "." || name === ".." || /[\\/\x00-\x1f=]/.test(name)) {
@@ -122,4 +145,4 @@ const rollbackWorld = (worldsDir, name, rollback) => {
   }
 };
 
-module.exports = { worldName, metadataName, validateSegmented, snapshotWorld, replaceWorld, rollbackWorld };
+module.exports = { worldName, metadataName, validateSegmented, snapshotWorld, replaceWorld, rollbackWorld, getServerStatus };

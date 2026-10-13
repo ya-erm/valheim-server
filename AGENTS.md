@@ -2,6 +2,15 @@
 
 - Maintain the watcher source in this repository. Make changes locally, run
   `npm run check` and `npm test`, review the diff, and commit before deploying.
+- After each completed change, immediately commit and push it and publish a new
+  patch release by default. This is the user's standing authorization; do not ask
+  for confirmation again. Keep both version files in sync, push the matching tag,
+  and wait for CI and the release workflow to succeed. Never release failing
+  checks or include unrelated changes or private data in the commit.
+- Let both servers install the published release through their updater. Verify
+  installed versions and readiness on both servers. If hourly checks are not yet
+  due, an admin update check can trigger installation after confirming no active
+  backup/restore operation. Avoid copying runtime files directly after bootstrap.
 - Never commit production environment files, deployment hostnames, chat IDs,
   credentials, player data, game worlds, logs, or backups. Use synthetic fixtures
   and neutral configuration examples. Review all staged files before pushing.

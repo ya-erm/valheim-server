@@ -80,6 +80,8 @@ updates only those watcher settings and keeps a private backup of the existing
 
 Telegram commands:
 
+- `/status`: server status, the current running world's map name, and online count.
+
 - `/bot_version`: show the installed version and automatic-update status.
 - `/bot_update_check`: check for a newer release, without installing (admin).
 - `/bot_update`: download and install a newer release immediately (admin).
@@ -92,6 +94,11 @@ configuration, game worlds, logs or player data are included. To publish:
 2. Run `npm run check` and `npm test`, commit, and push the code.
 3. Create and push the matching `vX.Y.Z` tag. The release workflow handles packaging
    and publication after validation succeeds.
+
+After each completed local change, commit and push immediately and publish the
+next patch release following these steps. Wait for successful CI and publication,
+then verify that both servers installed it through their updater. These actions
+are authorized by default; no separate release confirmation is needed.
 
 The updater checks GitHub's asset SHA-256 digest, file allowlist, per-file hashes,
 manifest version and syntax. It builds the candidate image while the old watcher

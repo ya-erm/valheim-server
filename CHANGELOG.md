@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.2
+
+- Show the currently configured running world's name in `/status`, alongside the
+  existing container status and player count. Read the exact Valheim container
+  and only its WORLD_NAME setting; stopped containers show no connected map.
+- Make commit, push, release publication and verification on both servers the
+  default workflow after each completed local change.
+
 ## 1.1.1
 
 - Fix multi-source Docker COPY syntax for the legacy builder used by the running

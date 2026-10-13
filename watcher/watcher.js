@@ -7,6 +7,7 @@ const https = require("https");
 const { spawn, exec, execFile } = require("child_process");
 const { createRestoreManager } = require("./restore");
 const { createUpdater } = require("./updater");
+const { getServerStatus } = require("./world-files");
 
 // ======== .env загрузка ========
 
@@ -895,13 +896,11 @@ const handleUpdate = async (update) => {
     console.log(`[bot] ⛔️ Чат ${chatId} отписан от событий`);
     sendMessage("⛔️ Чат отписан от событий Valheim", undefined, chatId);
   } else if (text === "/status") {
-    exec("docker ps --filter name=valheim-server --format '{{.Status}}'",
-      (err, stdout) => {
-        const status = stdout.trim() || "Не запущен";
-        console.log("[bot] /status →", status);
-        sendMessage(`📊 Статус: ${status}\n👥 Онлайн: ${onlinePlayers.size}`, undefined, chatId);
-      }
-    );
+    try {
+      await sendMessage(await getServerStatus(VALHEIM_CONTAINER, onlinePlayers.size), undefined, chatId);
+    } catch {
+      await sendMessage("❌ Не удалось получить статус сервера", undefined, chatId);
+    }
   } else if (text === "/online") {
     console.log("[bot] /online →", onlinePlayers.size);
     if (onlinePlayers.size === 0) {
