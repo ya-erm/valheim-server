@@ -74,6 +74,9 @@ deployment `.env`. The repository is public; no GitHub token is required. The bo
 checks the latest published stable release every hour, and once shortly after
 startup. Drafts, prereleases and older versions are never installed. Unchanged
 checks are silent. Backup and active restore sessions postpone installation.
+For initial setup, `node scripts/configure-updater.js /path/to/watcher OWNER/REPO`
+updates only those watcher settings and keeps a private backup of the existing
+`.env`. Recreate the watcher after changing its environment.
 
 Telegram commands:
 
