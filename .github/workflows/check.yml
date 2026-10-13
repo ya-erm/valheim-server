@@ -14,3 +14,5 @@ jobs:
           node-version: "22"
       - run: npm run check
       - run: npm test
+      - name: Build with the updater's Docker builder
+        run: DOCKER_BUILDKIT=0 docker build --tag valheim-watcher:test watcher
