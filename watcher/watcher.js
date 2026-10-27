@@ -7,7 +7,7 @@ const https = require("https");
 const { spawn, exec, execFile } = require("child_process");
 const { createRestoreManager } = require("./restore");
 const { createUpdater } = require("./updater");
-const { getServerStatus } = require("./world-files");
+const { getServerStatus, createServerControl } = require("./world-files");
 
 // ======== .env загрузка ========
 
@@ -790,6 +790,10 @@ const getActiveWorldName = () => {
 
 /** Создать ZIP только активного мира: legacy .db/.fwl или каталог сегментированного мира. */
 const triggerValheimBackup = async (chatId) => {
+  if (serverControl.isBusy()) {
+    await sendMessage("⏳ Идёт запуск или остановка сервера. Повторите backup после завершения.", undefined, chatId);
+    return;
+  }
   if (manualBackupInProgress) {
     await sendMessage("⏳ Бэкап уже создаётся", undefined, chatId);
     return;
@@ -858,11 +862,18 @@ const restoreManager = createRestoreManager({
   onlinePlayers,
   sendMessage,
   sendDocument,
+  isBusy: () => manualBackupInProgress || serverControl.isBusy(),
 });
 const updater = createUpdater({
   adminId: TG_ADMIN_ID,
   notify: (text, chat) => sendMessage(text, undefined, chat || TG_ADMIN_ID),
-  isBusy: () => manualBackupInProgress || restoreManager.isBusy(),
+  isBusy: () => manualBackupInProgress || restoreManager.isBusy() || serverControl.isBusy(),
+});
+const serverControl = createServerControl({
+  adminId: TG_ADMIN_ID,
+  container: VALHEIM_CONTAINER,
+  sendMessage,
+  isBusy: () => manualBackupInProgress || restoreManager.isBusy() || updater.isApplying(),
 });
 
 const handleUpdate = async (update) => {
@@ -876,6 +887,12 @@ const handleUpdate = async (update) => {
     : rawText;
   console.log(`[bot] Команда от ${userId} в чате ${chatId}: ${rawText}`);
 
+  if (text === "/server_start" || text === "/server_stop") {
+    // Keep polling responsive while the game spends several minutes starting.
+    // The controller acquires its lock synchronously before the first await.
+    serverControl.handleUpdate(update).catch(() => console.error("[bot] Server control reply failed"));
+    return;
+  }
   if (await updater.handleUpdate(update)) return;
   if (updater.isApplying() && (update.message.document || String(text).startsWith("/restore") || text === "/backup")) {
     await sendMessage("⏳ Идёт обновление бота. Повторите backup/restore после завершения.", undefined, chatId);
@@ -934,6 +951,8 @@ const handleUpdate = async (update) => {
       "/hooks_on - подписаться на события сервера (хуки)\n" +
       "/hooks_off - отписаться от событий сервера\n" +
       "/status - статус сервера\n" +
+      "/server_start - запустить сервер (админ)\n" +
+      "/server_stop - остановить сервер (админ)\n" +
       "/online - игроки онлайн и время текущей сессии\n" +
       "/stats - суммарное время игроков\n" +
       "/backup - бэкап активного мира без .old\n" +

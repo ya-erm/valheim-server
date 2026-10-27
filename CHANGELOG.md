@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.3
+
+- Add admin-only `/server_start` and `/server_stop`, preserving notification
+  subscriptions under `/start` and `/stop`.
+- Verify the current startup's world connection and the stopped container state;
+  report Docker failures, startup timeouts, and forced shutdowns.
+- Serialize server control and prevent conflicting backup, restore, and bot update
+  operations while it runs.
+
 ## 1.1.2
 
 - Show the currently configured running world's name in `/status`, alongside the

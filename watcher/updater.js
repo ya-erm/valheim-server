@@ -165,7 +165,7 @@ const createUpdater = (options = {}, runtime = {}) => {
     if (result.status === "available") return "🆕 Доступна версия бота " + result.latest + ". Установить: /bot_update";
     if (result.status === "current") return "✅ Бот " + version + ": новых релизов нет.";
     if (result.status === "busy") return "⏳ Обновление бота уже выполняется.";
-    if (result.status === "deferred") return "⏳ Идёт backup/restore. Обновление отложено до завершения операции.";
+    if (result.status === "deferred") return "⏳ Идёт backup/restore или управление сервером. Обновление отложено до завершения операции.";
     if (result.status === "disabled") return "Не настроен WATCHER_RELEASE_REPO.";
     return "❌ Проверка обновления не выполнена: " + (result.error || "эта версия ранее не прошла проверку запуска");
   };

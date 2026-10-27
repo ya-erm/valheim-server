@@ -434,6 +434,7 @@ const createRestoreManager = (o) => {
 
   const document = async (msg, chat, user) => {
     if (user !== String(o.adminId || "")) { await say(chat, "⛔️ Restore доступен только администратору"); return; }
+    if (o.isBusy?.()) { await say(chat, "⏳ Идёт backup или управление сервером. Повторите restore после завершения."); return; }
     const s = session(chat, user);
     if (!s) { await say(chat, "Сначала отправьте /restore"); return; }
     if (s.busy) { await say(chat, "⏳ Уже обрабатываю файл"); return; }
@@ -461,6 +462,7 @@ const createRestoreManager = (o) => {
 
   const yandex = async (url, chat, user) => {
     if (user !== String(o.adminId || "")) { await say(chat, "⛔️ Restore доступен только администратору"); return; }
+    if (o.isBusy?.()) { await say(chat, "⏳ Идёт backup или управление сервером. Повторите restore после завершения."); return; }
     const s = session(chat, user);
     if (!s) { await say(chat, "Сначала отправьте /restore"); return; }
     if (s.busy) { await say(chat, "⏳ Уже обрабатываю загрузку"); return; }
@@ -491,6 +493,7 @@ const createRestoreManager = (o) => {
     if (msg.document && [".zip", ".db", ".fwl"].includes(ext)) { await document(msg, chat, user); return true; }
     if (!['/restore', '/restore_url', '/restore_world', '/restore_confirm', '/restore_cancel'].includes(cmd) && !worldCommand) return false;
     if (user !== String(o.adminId || "")) { await say(chat, "⛔️ Restore доступен только администратору"); return true; }
+    if (o.isBusy?.()) { await say(chat, "⏳ Идёт backup или управление сервером. Повторите restore после завершения."); return true; }
     if (session(chat, user)?.busy) { await say(chat, "⏳ Restore уже выполняется"); return true; }
 
     if (cmd === "/restore") {

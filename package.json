@@ -1,6 +1,6 @@
 {
   "name": "valheim-server",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "private": true,
   "description": "Valheim watcher and world backup/restore tools",
   "scripts": {

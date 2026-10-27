@@ -24,6 +24,78 @@ const getServerStatus = async (container, online, run = statusCommand) => {
   return "📊 Статус: " + (status || "Не запущен") + "\n🗺 Карта: " + world + "\n👥 Онлайн: " + online;
 };
 
+const controlCommand = (args) => new Promise((resolve, reject) => {
+  execFile("docker", args, { timeout: 180000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    // Docker errors can contain private deployment settings.
+    if (error) reject(new Error("Не удалось выполнить команду Docker; проверьте /status и журнал сервера"));
+    else resolve(stdout + stderr);
+  });
+});
+
+const createServerControl = (options, runtime = {}) => {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(options.container)) throw new Error("Invalid container name");
+  const run = runtime.run || controlCommand;
+  const sleep = runtime.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const inspect = async () => JSON.parse(await run(["inspect", "--format", "{{json .State}}", options.container]));
+  let busy = false;
+  const handleUpdate = async (update) => {
+    const message = update?.message;
+    const command = String(message?.text || "").trim().replace(/@[A-Za-z0-9_]+$/, "");
+    if (!["/server_start", "/server_stop"].includes(command)) return false;
+    const say = (text) => options.sendMessage(text, undefined, String(message.chat.id));
+    if (!options.adminId || String(message.from?.id || "") !== String(options.adminId)) {
+      await say("⛔️ Управление сервером доступно только администратору");
+      return true;
+    }
+    if (busy || options.isBusy()) {
+      await say("⏳ Идёт управление сервером, backup/restore или обновление бота. Повторите команду после завершения операции.");
+      return true;
+    }
+    busy = true;
+    try {
+      const state = await inspect();
+      if (state.Paused || state.Restarting || ["removing", "dead"].includes(state.Status)) {
+        throw new Error("Контейнер в переходном или аварийном состоянии; проверьте /status и журнал сервера");
+      }
+      if (command === "/server_stop") {
+        if (!state.Running) await say("⏹ Сервер уже остановлен");
+        else {
+          await say("⏳ Останавливаю сервер; ожидаю сохранения мира...");
+          await run(["stop", "--time", "120", options.container]);
+          const stopped = await inspect();
+          if (stopped.Running || stopped.Restarting) throw new Error("Сервер продолжает работать; проверьте /status");
+          await say(stopped.ExitCode === 137 || stopped.OOMKilled
+            ? "⚠️ Сервер остановлен принудительно. Проверьте сохранение мира и журнал сервера."
+            : "⏹ Сервер остановлен");
+        }
+      } else if (state.Running) await say("🚀 Сервер уже запущен. Проверить состояние: /status");
+      else {
+        await say("⏳ Запускаю сервер; ожидаю подключения игрового мира...");
+        await run(["start", options.container]);
+        let ready = false, startedAt;
+        for (let i = 0; i < (runtime.attempts ?? 200); i++) {
+          const current = await inspect();
+          if (!current.Running || current.Restarting || current.Paused) throw new Error("Запуск прерван; проверьте /status и журнал сервера");
+          if (!startedAt) {
+            startedAt = current.StartedAt;
+            if (!Number.isFinite(Date.parse(startedAt))) throw new Error("Не удалось определить время запуска сервера");
+          }
+          if (current.StartedAt !== startedAt) throw new Error("Сервер перезапустился во время проверки; проверьте /status");
+          const logs = await run(["logs", "--since", startedAt, "--tail", "200", options.container]);
+          if (logs.includes("Game server connected")) { ready = true; break; }
+          await sleep(3000);
+        }
+        if (!ready) throw new Error("Не дождался подключения мира за 10 минут. Контейнер оставлен запущенным; проверьте /status и журнал сервера");
+        await say("✅ Сервер запущен, игровой мир подключён");
+      }
+    } catch (error) {
+      await say("❌ " + error.message);
+    } finally { busy = false; }
+    return true;
+  };
+  return { handleUpdate, isBusy: () => busy };
+};
+
 const worldName = (name) => {
   if (!name || name.length > 64 || name === "." || name === ".." || /[\\/\x00-\x1f=]/.test(name)) {
     throw new Error("Недопустимое имя мира");
@@ -145,4 +217,4 @@ const rollbackWorld = (worldsDir, name, rollback) => {
   }
 };
 
-module.exports = { worldName, metadataName, validateSegmented, snapshotWorld, replaceWorld, rollbackWorld, getServerStatus };
+module.exports = { worldName, metadataName, validateSegmented, snapshotWorld, replaceWorld, rollbackWorld, getServerStatus, createServerControl };

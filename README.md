@@ -81,10 +81,21 @@ updates only those watcher settings and keeps a private backup of the existing
 Telegram commands:
 
 - `/status`: server status, the current running world's map name, and online count.
-
+- `/server_start`: start the existing game container and wait for the current
+  startup's world connection log before reporting readiness (admin).
+- `/server_stop`: stop the game container with a 120-second shutdown grace period
+  and verify it stopped (admin). Connected players will be disconnected.
+- `/start` and `/stop` continue to subscribe/unsubscribe the chat to notifications.
 - `/bot_version`: show the installed version and automatic-update status.
 - `/bot_update_check`: check for a newer release, without installing (admin).
 - `/bot_update`: download and install a newer release immediately (admin).
+
+Server control is serialized and blocked during backup, active restore sessions,
+and bot updates. While server control is running, backup, restore, and updater
+installation are blocked too. A repeated start/stop reports the existing state.
+Startup waits up to ten minutes; a timeout leaves the container running for
+inspection. Commands target only `VALHEIM_CONTAINER` and never recreate the game
+container or change the selected world. A forced shutdown is reported explicitly.
 
 The release workflow runs checks and tests, packages the runtime allowlist, and
 attaches `valheim-watcher.zip` and its SHA-256 file to the GitHub release. No
